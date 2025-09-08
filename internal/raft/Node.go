@@ -1,7 +1,7 @@
 package raft
 
 import (
-	"crypto/rand"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -39,6 +39,7 @@ func NewNode(id string, peers []string, cfg Config) *Node {
 		log:               make([]LogEntry, 0),
 		electionTimeout:   randomElectionTimeout(cfg.ElectionTimeoutMin, cfg.ElectionTimeoutMax),
 		heartbeatInterval: cfg.HeartbeatInterval,
+		resetElectionCh:   make(chan struct{}),
 		stopCh:            make(chan struct{}),
 	}
 }
