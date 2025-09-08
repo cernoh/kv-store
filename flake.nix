@@ -21,6 +21,9 @@
           delve
           golangci-lint
         ];
+        shellHook = ''
+          fish
+        '';
       };
     });
 }
