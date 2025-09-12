@@ -123,3 +123,56 @@ func (n *Node) runLeader() {
 func (n *Node) Stop() {
 	close(n.stopCh)
 }
+
+func (n *Node) handleRequestvote(req *RequestVoteReq) *RequestVoteResp {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	resp := &RequestVoteReq{Term: n.term, VoteGranted: false}
+
+	//reject if term stable
+	if req.Term < n.term {
+		return resp
+	}
+
+	//update term if peer has newer one
+	if req.Term > n.term {
+		n.term = req.Term
+		n.role = Follower
+		n.votedFor = ""
+	}
+
+	// grant vote if we havent voted this term/same candidate
+	if n.votedFor == "" || n.votedFor == req.CandidateID {
+		n.votedFor = req.CandidateID
+		resp.VoteGranted = true
+	}
+
+	return resp
+
+}
+
+func (n *Node) handleAppendEntries(req *AppendEntriesReq) *AppendEntriesResp {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	resp := &AppendEntriesResp{Term: n.term, Success: false}
+
+	if req.Term < n.term {
+		return resp
+	}
+
+	// Update term and follow leader
+	n.term = req.Term
+	n.role = Follower
+	n.votedFor = req.LeaderID
+
+	// Reset election timeout since heartbeat received
+	select {
+	case n.resetElectionCh <- struct{}{}:
+	default:
+	}
+
+	resp.Success = true
+	return resp
+}
